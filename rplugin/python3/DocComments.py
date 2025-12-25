@@ -70,13 +70,30 @@ class Main(object):
             return
         for id_num in comments:
             contents = comments[id_num]
+            start_line = self.nvim.api.buf_get_lines(0, contents["row"], contents["row"] + 1, True)
+            start_line_len = len(start_line[0]) if start_line else 0
+            start_col = contents["col"]
+            if start_col > start_line_len:
+                start_col = start_line_len
             options = {
                     "id": int(id_num),
                     "end_row": contents["end_row"],
                     "end_col": contents["end_col"],
                     "hl_group": self.highlight_group,
                     }
-            self.nvim.api.buf_set_extmark(0, self.ns, contents["row"], contents["col"], options)
+            end_line = self.nvim.api.buf_get_lines(0, contents["end_row"], contents["end_row"] + 1, True)
+            end_line_len = len(end_line[0]) if end_line else 0
+            end_col = contents["end_col"]
+            if end_col > end_line_len:
+                end_col = end_line_len
+            if end_col < 0:
+                end_col = 0
+            if contents["end_row"] == contents["row"] and end_col < start_col:
+                end_col = start_col
+            if contents["row"] < 0 or contents["end_row"] < 0:
+                continue
+            options["end_col"] = end_col
+            self.nvim.api.buf_set_extmark(0, self.ns, contents["row"], start_col, options)
 
     def _return_comments_dict_from_file(self):
         if not os.path.isfile(self.comments_file):
@@ -118,6 +135,13 @@ class Main(object):
             end_col = len(line)-1
         end_row -= 1
         end_col += 1
+        # Clamp end_col to line length to avoid extmark errors.
+        end_line = self.nvim.api.buf_get_lines(0, end_row, end_row + 1, True)
+        end_line_len = len(end_line[0]) if end_line else 0
+        if end_col > end_line_len:
+            end_col = end_line_len
+        if end_row == start_row and end_col < start_col:
+            end_col = start_col
         options = {
                 "end_row": end_row,
                 "end_col": end_col,
@@ -278,4 +302,3 @@ class Main(object):
             comments[str(mark_id)]["end_col"] = end_col
         with open(self.comments_file, "w") as f:
             f.write(json.dumps(comments))
-
