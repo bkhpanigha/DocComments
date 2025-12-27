@@ -68,32 +68,48 @@ class Main(object):
         comments = self._return_comments_dict_from_file()
         if comments == {}:
             return
+        line_count = self.nvim.api.buf_line_count(0)
+        if line_count == 0:
+            return
         for id_num in comments:
             contents = comments[id_num]
-            start_line = self.nvim.api.buf_get_lines(0, contents["row"], contents["row"] + 1, True)
+            row = contents["row"]
+            end_row = contents["end_row"]
+            if row < 0:
+                row = 0
+            if row >= line_count:
+                row = line_count - 1
+            if end_row < 0:
+                end_row = 0
+            if end_row >= line_count:
+                end_row = line_count - 1
+            if end_row < row:
+                end_row = row
+
+            start_line = self.nvim.api.buf_get_lines(0, row, row + 1, True)
             start_line_len = len(start_line[0]) if start_line else 0
             start_col = contents["col"]
+            if start_col < 0:
+                start_col = 0
             if start_col > start_line_len:
                 start_col = start_line_len
             options = {
                     "id": int(id_num),
-                    "end_row": contents["end_row"],
+                    "end_row": end_row,
                     "end_col": contents["end_col"],
                     "hl_group": self.highlight_group,
                     }
-            end_line = self.nvim.api.buf_get_lines(0, contents["end_row"], contents["end_row"] + 1, True)
+            end_line = self.nvim.api.buf_get_lines(0, end_row, end_row + 1, True)
             end_line_len = len(end_line[0]) if end_line else 0
             end_col = contents["end_col"]
             if end_col > end_line_len:
                 end_col = end_line_len
             if end_col < 0:
                 end_col = 0
-            if contents["end_row"] == contents["row"] and end_col < start_col:
+            if end_row == row and end_col < start_col:
                 end_col = start_col
-            if contents["row"] < 0 or contents["end_row"] < 0:
-                continue
             options["end_col"] = end_col
-            self.nvim.api.buf_set_extmark(0, self.ns, contents["row"], start_col, options)
+            self.nvim.api.buf_set_extmark(0, self.ns, row, start_col, options)
 
     def _return_comments_dict_from_file(self):
         if not os.path.isfile(self.comments_file):
