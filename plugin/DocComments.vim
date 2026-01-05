@@ -4,7 +4,8 @@ let comment_file_head = expand("%:p:h")
 let comment_file_tail = expand("%:p:t")
 let full = comment_file_head . "/." . comment_file_tail . "_comments"
 if filereadable(full)
-    set nomodifiable
+    " Avoid toggling 'modifiable' to prevent conflicts with other plugins.
+    " set nomodifiable
 endif
 "Even if the user doesn't want to show comments, we need to load the extmarks so changes in position can be tracked.
 "We check the filetype on autocmds first to avoid annoying errors when starting vim on a netrw buffer
